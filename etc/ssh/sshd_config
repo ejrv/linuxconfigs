@@ -1,0 +1,39 @@
+## This file is mostly a clone of https://infosec.mozilla.org/guidelines/openssh
+## Mozilla did most of the work on this one, I've only modified encryption parameters to be more strict.
+## This vastly reduces backwards compatibility with very old legacy systems, but improves security.
+## Packet length is no longer disclosed through these ciphers, and you'll see automated cracking drop to near-zero if that's a concern on your system.
+
+## Only support ed25519
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+## Only support curve25519-sha256
+KexAlgorithms curve25519-sha256@libssh.org
+
+## Only support ChaCha20 because it's the only cipher that doesn't disclose packet length
+Ciphers chacha20-poly1305@openssh.com
+
+## Only support hmac-sha2-512-etm
+MACs hmac-sha2-512-etm@openssh.com
+
+## Everything below this line is simply copied & pasted from Mozilla
+
+## Password based logins are disabled - only public key based logins are allowed.
+AuthenticationMethods publickey
+
+## LogLevel VERBOSE logs user's key fingerprint on login. Needed to have a clear audit track of which key was using to log in.
+LogLevel VERBOSE
+
+## Log sftp level file access (read/write/etc.) that would not be easily logged otherwise.
+Subsystem sftp  /usr/lib/ssh/sftp-server -f AUTHPRIV -l INFO
+
+## Root login is not allowed for auditing reasons. This is because it's difficult to track which process belongs to which root user:
+##
+## On Linux, user sessions are tracking using a kernel-side session id, however, this session id is not recorded by OpenSSH.
+## Additionally, only tools such as systemd and auditd record the process session id.
+## On other OSes, the user session id is not necessarily recorded at all kernel-side.
+## Using regular users in combination with /bin/su or /usr/bin/sudo ensure a clear audit track.
+PermitRootLogin No
+
+## Use kernel sandbox mechanisms where possible in unprivileged processes
+## Systrace on OpenBSD, Seccomp on Linux, seatbelt on MacOSX/Darwin, rlimit elsewhere.
+UsePrivilegeSeparation sandbox
